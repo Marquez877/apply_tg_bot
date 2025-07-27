@@ -51,20 +51,7 @@ async def start_command(message: types.Message):
 
 async def main():
     print("Bot is running...")
-    await bot.delete_webhook()  # Удаляем вебхук перед polling
-    
-    # Отправляем уведомление о прохождении первого тура
-    try:
-        await bot.send_message(
-            chat_id=1736442606,
-            text="🎉 <b>Поздравляем! Вы прошли первый тур!</b>\n\n"
-                 "Напишите @marquezpht, чтобы выбрать время для созвона.",
-            parse_mode="HTML"
-        )
-        print("Уведомление о прохождении первого тура отправлено!")
-    except Exception as e:
-        print(f"Ошибка при отправке уведомления: {e}")
-    
+    await bot.delete_webhook()
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
