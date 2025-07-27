@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 import os
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from db import init_db, add_user
+
 load_dotenv()
 API_TOKEN = os.getenv("API_TOKEN")
 if not API_TOKEN:
@@ -15,88 +17,54 @@ logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
+
+init_db()  # Инициализация базы данных
+
 @dp.message(Command("start"))
 async def start_command(message: types.Message):
-    
+    add_user(message.from_user.id)  # Сохраняем ID пользователя
     builder = InlineKeyboardBuilder()
-    builder.add(types.InlineKeyboardButton(text="Main menu", callback_data="main_menu"))
-    await message.answer("Hello! I'm your bot. How can I assist you today?", reply_markup=builder.as_markup())
-
-@dp.message(Command("help"))
-async def help_command(message: types.Message):
-
-    builder = InlineKeyboardBuilder()
-    builder.add(types.InlineKeyboardButton(text="Back to Menu", callback_data="back_to_menu"))
-    await message.answer("Here are the commands you can use:\n/start - Start the bot\n/help - Get help information", reply_markup=builder.as_markup())
-
-@dp.message(Command("application"))
-async def application_command(message: types.Message):
-    builder = InlineKeyboardBuilder()
-    builder.add(types.InlineKeyboardButton(text="Apply Now", url="https://example.com/application"))
-    builder.add(types.InlineKeyboardButton(text="Back to Menu", callback_data="back_to_menu"))
-    await message.answer("To apply, please fill out the application form at: https://example.com/application", reply_markup=builder.as_markup())
-
-
-
-
-
-
-
-
-# Обработчик callback_query для "main_menu"
-async def main_menu_callback(callback_query: types.CallbackQuery):
-    builder = InlineKeyboardBuilder()
-    builder.add(types.InlineKeyboardButton(text="Help", callback_data="help"))
-    builder.add(types.InlineKeyboardButton(text="Application", callback_data="application"))
-    await callback_query.message.edit_text(text= f'''Hello! Welcome to the bot.'''
-    ''' Create an inline keyboard with a button to go to the main menu'''
-    '''You can use the following commands:''', reply_markup=builder.as_markup())
-    await callback_query.answer()
-
-async def help_callback(callback_query: types.CallbackQuery):
-    builder = InlineKeyboardBuilder()
-    builder.add(types.InlineKeyboardButton(text="Back to Menu", callback_data="back_to_menu"))
-    await callback_query.message.edit_text(
-        "Here are the commands you can use:\n/start - Start the bot\n/help - Get help information",
-        reply_markup=builder.as_markup()
+    builder.add(types.InlineKeyboardButton(
+        text="Заполнить Google форму",
+        url="https://docs.google.com/forms/d/e/1FAIpQLScrw5LecmZ7FRUYhaKkk_VEE68kNtEANsmQiQAGD0rw3CIP7A/viewform"
+    ))
+    await message.answer(
+        f"<b>👋 Привет!</b>\n\n"
+        "<b>Это 1 тур отбора в группу по программированию.</b>\n\n"
+        "Здесь я <b>не оцениваю ваши умственные способности</b>, а смотрю на <b>навыки</b>, <b>подходы к решению задач</b> и <b>желание учиться</b>.\n\n"
+        "<b>Кому этот курс НЕ подходит:</b>\n"
+        "1️⃣ <b>Кто не готов к сильным нагрузкам на протяжении полугода.</b>\n"
+        "2️⃣ <b>Ленивым, безответственным, недисциплинированным и грубым.</b>\n"
+        "3️⃣ <b>Тем, кто хочет просто попробовать себя в этой сфере.</b> Вы подаетесь, если <b>точно знаете, что хотите стать программистом высокого уровня.</b>\n"
+        "4️⃣ <b>Не знающим русский и английский на базовом уровне.</b>\n\n"
+        "<b>Ваша задача:</b>\n"
+        f"— <b>Ваш Telegram ID:</b> <code>{message.from_user.id}</code>\n"
+        "— <b>Скопируйте его и вставьте в Google Docs (ссылка ниже)</b>\n"
+        "— <b>Заполнение займет 5-10 минут</b>\n\n"
+        "<b>После прохождения первого тура вам придет уведомление о созвоне.</b>\n"
+        "<b>Конец отбора: 24.07.25! Успейте заполнить форму, чтобы участвовать в отборе.</b>",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
     )
-    await callback_query.answer()
-# Регистрация обработчика с фильтром по callback_data == "main_menu"
 
-async def back_to_menu_callback(callback_query: types.CallbackQuery):
-    builder = InlineKeyboardBuilder()
-    builder.add(types.InlineKeyboardButton(text="Main Menu", callback_data="main_menu"))
-    await callback_query.message.edit_text("You are back to the main menu.", reply_markup=builder.as_markup())
-    await callback_query.answer()
-
-async def application_callback(callback_query: types.CallbackQuery):
-    builder = InlineKeyboardBuilder()
-    builder.add(types.InlineKeyboardButton(text="Apply Now", url="https://example.com/application"))
-    builder.add(types.InlineKeyboardButton(text="Back to Menu", callback_data="back_to_menu"))
-    await callback_query.message.edit_text("To apply, please fill out the application form at: https://example.com/application", reply_markup=builder.as_markup())
-    await callback_query.answer()
-
-
-
-
-
-
-
-
-dp.callback_query.register(main_menu_callback, lambda c: c.data == "main_menu")
-dp.callback_query.register(help_callback, lambda c: c.data == "help")
-dp.callback_query.register(back_to_menu_callback, lambda c: c.data == "back_to_menu")
-dp.callback_query.register(application_callback, lambda c: c.data == "application")
-
-
-
-
-
-
-
+# ...остальные обработчики...
 
 async def main():
     print("Bot is running...")
+    await bot.delete_webhook()  # Удаляем вебхук перед polling
+    
+    # Отправляем уведомление о прохождении первого тура
+    try:
+        await bot.send_message(
+            chat_id=1736442606,
+            text="🎉 <b>Поздравляем! Вы прошли первый тур!</b>\n\n"
+                 "Напишите @marquezpht, чтобы выбрать время для созвона.",
+            parse_mode="HTML"
+        )
+        print("Уведомление о прохождении первого тура отправлено!")
+    except Exception as e:
+        print(f"Ошибка при отправке уведомления: {e}")
+    
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
